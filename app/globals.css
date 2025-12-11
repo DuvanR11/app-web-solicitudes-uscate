@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* globals.css */
+
+/* Ocultar flechas en inputs de número */
+.remove-arrow::-webkit-inner-spin-button, 
+.remove-arrow::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+.remove-arrow { 
+  -moz-appearance: textfield; 
+}
