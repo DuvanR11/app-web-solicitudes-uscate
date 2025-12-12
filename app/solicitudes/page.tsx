@@ -117,10 +117,10 @@ export default function SolicitudesPage() {
           
           <div className="flex gap-3">
             {/* Botón Filtro (Visual en este ejemplo) */}
-            <button className="hidden md:flex items-center gap-2 text-white/70 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
+            {/* <button className="hidden md:flex items-center gap-2 text-white/70 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
                <Filter size={18} />
                <span className="text-sm font-medium">Filtrar</span>
-            </button>
+            </button> */}
 
             <button 
               onClick={() => router.push('/solicitudes/crear')}

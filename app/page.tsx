@@ -70,10 +70,10 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="text-white hover:bg-white/10 p-2 rounded-full transition-colors relative">
+          {/* <button className="text-white hover:bg-white/10 p-2 rounded-full transition-colors relative">
             <Bell size={24} />
             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          </button>
+          </button> */}
           <button onClick={handleLogout} className="text-white/70 hover:text-red-400 hover:bg-white/10 p-2 rounded-full transition-colors lg:flex items-center gap-2">
              <LogOut size={24} />
              <span className="hidden lg:inline text-sm font-semibold">Salir</span>
@@ -113,7 +113,7 @@ export default function HomePage() {
             </div>
 
             {/* Estadísticas Rápidas (Solo Desktop visualmente) */}
-            <div className="hidden lg:flex w-full mt-8 border-t border-white/10 pt-6 justify-between text-center">
+            {/* <div className="hidden lg:flex w-full mt-8 border-t border-white/10 pt-6 justify-between text-center">
               <div>
                 <span className="block text-2xl font-bold text-white">0</span>
                 <span className="text-xs text-white/50 uppercase tracking-wider">Reportes</span>
@@ -126,7 +126,7 @@ export default function HomePage() {
                 <span className="block text-2xl font-bold text-green-400">0</span>
                 <span className="text-xs text-white/50 uppercase tracking-wider">Resueltos</span>
               </div>
-            </div>
+            </div> */}
 
           </div>
         </div>
