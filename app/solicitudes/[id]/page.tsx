@@ -15,7 +15,8 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  Clock
+  Clock,
+  Siren // <--- NUEVO IMPORT
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
@@ -182,7 +183,7 @@ export default function DetalleSolicitudPage({ params }: { params: Promise<{ id:
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60" />
                 
-                {/* Badge Móvil (En PC está arriba en el título) */}
+                {/* Badge Móvil */}
                 <div className="lg:hidden absolute top-4 right-4">
                   <StatusBadge estado={solicitud.estado} />
                 </div>
@@ -209,12 +210,12 @@ export default function DetalleSolicitudPage({ params }: { params: Promise<{ id:
                     scrolling="no"
                     marginHeight={0}
                     marginWidth={0}
-                    src={`https://maps.google.com/maps?q=${solicitud.latitud},${solicitud.longitud}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    src={`https://maps.google.com/maps?q=$?q=${solicitud.latitud},${solicitud.longitud}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                     className="absolute inset-0"
                   />
                   
                   <a 
-                    href={`https://www.google.com/maps/search/?api=1&query=${solicitud.latitud},${solicitud.longitud}`}
+                    href={`https://maps.google.com/maps?q=$?q=${solicitud.latitud},${solicitud.longitud}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute bottom-3 right-3 bg-white text-[#002244] px-3 py-1.5 rounded-lg shadow-md text-xs font-bold flex items-center gap-1 hover:bg-[#FFCC00] transition-colors"
@@ -236,18 +237,39 @@ export default function DetalleSolicitudPage({ params }: { params: Promise<{ id:
                 <h2 className="text-[#002244] font-bold text-2xl leading-tight">
                   {solicitud.asunto}
                 </h2>
-                {/* Fecha simulada si viniera del backend */}
+                {/* Fecha simulada */}
                 <div className="flex items-center gap-1 text-xs text-slate-400 font-medium bg-slate-50 px-2 py-1 rounded-md">
                    <Calendar size={12} />
                    <span>Hoy</span>
                 </div>
               </div>
 
-              <div className="bg-[#f8fafc] border-l-4 border-[#FFCC00] p-5 rounded-r-xl">
+              <div className="bg-[#f8fafc] border-l-4 border-[#FFCC00] p-5 rounded-r-xl mb-6">
                 <p className="text-slate-600 text-sm lg:text-base leading-relaxed whitespace-pre-wrap">
                   {solicitud.descripcion}
                 </p>
               </div>
+
+              {/* ====================================================== */}
+              {/* --- INDICADOR VISUAL: CAI SOLICITADO --- */}
+              {/* ====================================================== */}
+              {solicitud.solicitar_cai && (
+                <div className="bg-[#002244]/5 border border-[#002244]/10 rounded-2xl p-4 flex items-center gap-4 animate-fade-in-up">
+                  <div className="bg-[#002244] text-[#FFCC00] p-3 rounded-full shadow-lg shadow-blue-900/20 shrink-0">
+                    <Siren size={24} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-[#002244] font-bold text-sm uppercase tracking-wide">
+                      Unidad Policial Solicitada
+                    </h4>
+                    <p className="text-slate-600 text-xs mt-0.5">
+                      El ciudadano ha marcado explícitamente la necesidad de presencia de un CAI móvil.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {/* ====================================================== */}
+
             </div>
 
             {/* 4. SEGUIMIENTO (TIMELINE) */}

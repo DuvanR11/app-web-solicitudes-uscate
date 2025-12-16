@@ -10,7 +10,9 @@ import {
   List, 
   CheckCircle2,
   Bell,
-  LogOut
+  LogOut,
+  ClipboardCheck, // <--- Nuevo icono importado
+  ArrowRight      // <--- Usaremos este para el botón del banner
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
@@ -70,10 +72,6 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* <button className="text-white hover:bg-white/10 p-2 rounded-full transition-colors relative">
-            <Bell size={24} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          </button> */}
           <button onClick={handleLogout} className="text-white/70 hover:text-red-400 hover:bg-white/10 p-2 rounded-full transition-colors lg:flex items-center gap-2">
              <LogOut size={24} />
              <span className="hidden lg:inline text-sm font-semibold">Salir</span>
@@ -112,28 +110,51 @@ export default function HomePage() {
               <span>Ciudadano Activo</span>
             </div>
 
-            {/* Estadísticas Rápidas (Solo Desktop visualmente) */}
-            {/* <div className="hidden lg:flex w-full mt-8 border-t border-white/10 pt-6 justify-between text-center">
-              <div>
-                <span className="block text-2xl font-bold text-white">0</span>
-                <span className="text-xs text-white/50 uppercase tracking-wider">Reportes</span>
-              </div>
-              <div>
-                <span className="block text-2xl font-bold text-[#FFCC00]">0</span>
-                <span className="text-xs text-white/50 uppercase tracking-wider">Pendientes</span>
-              </div>
-              <div>
-                <span className="block text-2xl font-bold text-green-400">0</span>
-                <span className="text-xs text-white/50 uppercase tracking-wider">Resueltos</span>
-              </div>
-            </div> */}
-
           </div>
         </div>
 
         {/* === COLUMNA DERECHA: ACCIONES === */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           
+          {/* ========================================== */}
+          {/* --- NUEVO MÓDULO: TESTIGO ELECTORAL --- */}
+          {/* ========================================== */}
+          <div 
+            className="w-full bg-gradient-to-r from-[#FFCC00] to-[#FDB931] rounded-[24px] p-6 lg:p-8 relative overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group transform hover:-translate-y-1 animate-fade-in-up"
+          >
+            {/* Decoración de fondo */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none mix-blend-overlay"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
+            
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center gap-5 w-full md:w-auto">
+                <div className="bg-[#002244] p-4 rounded-2xl shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300">
+                  <ClipboardCheck size={32} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-[#002244] font-bold text-xl md:text-2xl leading-tight">
+                    ¿Quieres ser testigo electoral?
+                  </h3>
+                  <p className="text-[#002244]/80 text-sm font-semibold mt-1 max-w-md">
+                    Únete a la defensa del voto. Tu presencia garantiza la transparencia.
+                  </p>
+                </div>
+              </div>
+
+              <a 
+                href="https://forms.gle/7n5D9wEx3MzsobpR7" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full md:w-auto whitespace-nowrap bg-[#002244] text-white px-8 py-3.5 rounded-xl font-bold text-sm shadow-xl hover:bg-[#003366] transition-colors flex items-center justify-center gap-2 group/btn"
+              >
+                Inscribirme
+                <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+              </a>
+            </div>
+          </div>
+          {/* ========================================== */}
+
+
           <h3 className="text-white/80 text-lg font-bold hidden lg:block border-b border-white/10 pb-2">
             Acciones Rápidas
           </h3>
@@ -189,14 +210,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* CARD 3: Placeholder para el futuro (Solo Desktop) */}
+            {/* Placeholder Cards */}
             <div className="hidden lg:flex group bg-white/5 border border-white/10 rounded-[24px] p-6 items-center justify-center text-center cursor-not-allowed hover:bg-white/10 transition-colors">
                <div className="opacity-50">
                  <p className="text-white font-bold text-lg">Próximamente</p>
                  <p className="text-white/60 text-sm">Noticias y Alertas</p>
                </div>
             </div>
-             {/* CARD 4: Placeholder para el futuro (Solo Desktop) */}
              <div className="hidden lg:flex group bg-white/5 border border-white/10 rounded-[24px] p-6 items-center justify-center text-center cursor-not-allowed hover:bg-white/10 transition-colors">
                <div className="opacity-50">
                  <p className="text-white font-bold text-lg">Próximamente</p>

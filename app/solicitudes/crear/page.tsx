@@ -17,7 +17,8 @@ import {
   Send,
   AlertTriangle,
   ChevronDown,
-  Info
+  Info,
+  Siren // <--- NUEVO ICONO
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
@@ -47,6 +48,9 @@ export default function NuevaSolicitudPage() {
   const [descripcion, setDescripcion] = useState('');
   const [localidad, setLocalidad] = useState('');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
+  
+  // --- NUEVO ESTADO: SOLICITUD CAI MÓVIL ---
+  const [solicitarCai, setSolicitarCai] = useState(false);
   
   // Estados de Ubicación y UI
   const [latitud, setLatitud] = useState<string | null>(null);
@@ -133,7 +137,8 @@ export default function NuevaSolicitudPage() {
         localidad: Number(localidad),
         foto: fotoBase64,
         latitud,
-        longitud
+        longitud,
+        solicitar_cai: solicitarCai // <--- ENVIAMOS EL DATO
       };
 
       const response = await fetch(`${apiUrl}/solicitudes`, {
@@ -247,7 +252,7 @@ export default function NuevaSolicitudPage() {
             {/* GRID INTERNO FORMULARIO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
-              {/* ASUNTO (Ancho completo en móvil, compartido en PC si quisieras, aquí lo dejaremos full o compartido) */}
+              {/* ASUNTO */}
               <div className="md:col-span-1 relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><MessageSquare size={20} /></div>
                 <input 
@@ -275,7 +280,7 @@ export default function NuevaSolicitudPage() {
                 </select>
               </div>
 
-              {/* DESCRIPCIÓN (Ancho Completo) */}
+              {/* DESCRIPCIÓN */}
               <div className="md:col-span-2 relative group">
                 <div className="absolute left-4 top-4 text-slate-400"><FileText size={20} /></div>
                 <textarea 
@@ -294,7 +299,7 @@ export default function NuevaSolicitudPage() {
                 <div className="flex-1 border-b border-slate-100"></div>
               </div>
 
-              {/* --- ZONA DE EVIDENCIA (Split en PC) --- */}
+              {/* --- ZONA DE EVIDENCIA --- */}
               
               {/* CÁMARA */}
               <div className="md:col-span-1 flex flex-col h-full">
@@ -361,7 +366,7 @@ export default function NuevaSolicitudPage() {
                   </div>
 
                   <div className="mt-2 bg-white/60 rounded-xl p-2 text-center border border-white/50">
-                     {gpsError || !latitud ? (
+                      {gpsError || !latitud ? (
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-xs font-bold text-orange-600">
                           {gpsError ? 'No disponible' : 'Detectando...'}
@@ -378,6 +383,52 @@ export default function NuevaSolicitudPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ======================================================== */}
+              {/* --- NUEVO MÓDULO: SOLICITAR CAI MÓVIL (Toggle Card) --- */}
+              {/* ======================================================== */}
+              <div className="md:col-span-2 pt-2">
+                <div 
+                  onClick={() => setSolicitarCai(!solicitarCai)}
+                  className={`w-full relative rounded-2xl p-4 cursor-pointer transition-all duration-300 border-2 select-none group
+                    ${solicitarCai 
+                      ? 'bg-[#002244] border-[#002244] shadow-lg shadow-blue-900/20' 
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {/* Icono */}
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors
+                        ${solicitarCai ? 'bg-[#FFCC00] text-[#002244]' : 'bg-white text-slate-400'}`}>
+                        <Siren size={24} className={solicitarCai ? 'animate-pulse' : ''} />
+                      </div>
+                      
+                      {/* Textos */}
+                      <div>
+                        <h4 className={`font-bold text-base transition-colors ${solicitarCai ? 'text-white' : 'text-slate-700'}`}>
+                           Solicitar CAI Móvil
+                        </h4>
+                        <p className={`text-xs transition-colors ${solicitarCai ? 'text-white/70' : 'text-slate-500'}`}>
+                          {solicitarCai 
+                            ? 'Solicitud de unidad policial activa' 
+                            : '¿Requiere presencia inmediata de una unidad?'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Switch Visual */}
+                    <div className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 relative
+                      ${solicitarCai ? 'bg-[#FFCC00]' : 'bg-slate-300'}`}>
+                      <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-300
+                        ${solicitarCai ? 'translate-x-6 bg-[#002244]' : 'translate-x-0 bg-white'}`} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* ======================================================== */}
+
 
               {/* BOTÓN ENVIAR (Full Width) */}
               <div className="md:col-span-2 pt-4">
@@ -407,12 +458,12 @@ export default function NuevaSolicitudPage() {
 
       </div>
 
-      {/* --- FOOTER FIXED (Móvil) / BOTTOM (PC) --- */}
+      {/* --- FOOTER FIXED --- */}
       <footer className="fixed lg:static bottom-0 w-full py-4 bg-[#002244]/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-center border-t border-white/5 lg:border-none z-20">
         <p className="text-white/50 text-xs">© 2025 Equipo de la Seguridad</p>
       </footer>
 
-      {/* --- MODAL GPS (Overlay) --- */}
+      {/* --- MODAL GPS --- */}
       {showGpsModal && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl p-8 max-w-[350px] text-center shadow-2xl animate-fade-in-up">

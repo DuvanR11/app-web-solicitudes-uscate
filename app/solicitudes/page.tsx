@@ -10,7 +10,8 @@ import {
   ArrowRight, 
   FolderOpen, 
   Loader2,
-  Filter
+  Filter,
+  ClipboardCheck // <--- NUEVO IMPORT
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
@@ -49,6 +50,7 @@ export default function SolicitudesPage() {
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://tu-api.com';
         
+        // Simulación o llamada real
         const response = await fetch(`${apiUrl}/solicitudes`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -116,12 +118,6 @@ export default function SolicitudesPage() {
           </div>
           
           <div className="flex gap-3">
-            {/* Botón Filtro (Visual en este ejemplo) */}
-            {/* <button className="hidden md:flex items-center gap-2 text-white/70 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
-               <Filter size={18} />
-               <span className="text-sm font-medium">Filtrar</span>
-            </button> */}
-
             <button 
               onClick={() => router.push('/solicitudes/crear')}
               className="flex items-center gap-2 bg-[#FFCC00] hover:bg-[#e6b800] text-[#002244] px-5 py-2.5 rounded-full font-bold text-sm transition-transform active:scale-95 shadow-lg shadow-orange-500/20"
@@ -137,17 +133,16 @@ export default function SolicitudesPage() {
       {/* --- CONTENIDO PRINCIPAL --- */}
       <main className="w-full max-w-7xl px-5 py-8 pb-24 z-10 flex flex-col items-center">
 
-        {/* Header Móvil (Solo visible en < md si quieres reforzar el branding) */}
+        {/* Header Móvil */}
         <div className="md:hidden w-full flex items-center gap-4 mb-6 animate-fade-in-down">
           <div className="w-[50px] h-[50px] bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center justify-center">
              <Image src="/assets/img/bot.png" alt="Logo" width={30} height={30} />
           </div>
           <h2 className="text-white font-bold text-2xl leading-tight">Historial de <br/> Reportes</h2>
         </div>
-
         {/* --- ESTADO: CARGANDO --- */}
         {cargando && (
-          <div className="flex flex-col items-center justify-center mt-20 text-white/70 gap-3">
+          <div className="flex flex-col items-center justify-center mt-10 text-white/70 gap-3">
             <Loader2 className="animate-spin" size={48} color="#FFCC00" />
             <p className="text-sm font-medium animate-pulse">Cargando información...</p>
           </div>
@@ -185,8 +180,8 @@ export default function SolicitudesPage() {
                   </div>
 
                   <div className="inline-flex items-center gap-1.5 bg-[#f0f4f8] px-3 py-1.5 rounded-lg text-xs font-bold text-[#004080] w-fit mb-4">
-                     <MapPin size={14} />
-                     <span>Ubicación registrada</span>
+                      <MapPin size={14} />
+                      <span>Ubicación registrada</span>
                   </div>
 
                   <p className="text-[#718096] text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
@@ -206,7 +201,7 @@ export default function SolicitudesPage() {
 
         {/* --- ESTADO: VACÍO --- */}
         {!cargando && solicitudes.length === 0 && (
-          <div className="flex flex-col items-center justify-center mt-20 text-center animate-fade-in text-white">
+          <div className="flex flex-col items-center justify-center mt-10 text-center animate-fade-in text-white">
             <div className="bg-white/10 p-6 rounded-full mb-6">
               <FolderOpen size={64} className="text-[#FFCC00] opacity-90" />
             </div>
@@ -225,7 +220,7 @@ export default function SolicitudesPage() {
 
       </main>
 
-      {/* --- FOOTER FIXED (Solo móvil) / BOTTOM (PC) --- */}
+      {/* --- FOOTER --- */}
       <footer className="fixed lg:static bottom-0 w-full py-4 bg-[#002244]/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-center border-t border-white/5 lg:border-none z-50">
         <p className="text-white/50 text-xs">© 2025 Equipo de la Seguridad</p>
       </footer>
