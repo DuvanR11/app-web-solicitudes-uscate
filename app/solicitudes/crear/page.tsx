@@ -3,24 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Cookies from 'js-cookie';
 import { 
-  ArrowLeft, 
-  MessageSquare, 
-  Map as MapIcon, 
-  FileText, 
-  Camera, 
-  CheckCircle, 
-  X, 
-  MapPin, 
-  RefreshCw, 
-  Send,
-  AlertTriangle,
-  ChevronDown,
-  Info,
-  Siren // <--- NUEVO ICONO
+  ArrowLeft, MessageSquare, Map as MapIcon, FileText, Camera, 
+  CheckCircle, X, MapPin, RefreshCw, Send, AlertTriangle, ChevronDown, Info, Siren 
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
+import api from '@/app/lib/api'; // <--- Importamos api configurada
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
@@ -28,15 +16,12 @@ const poppins = Poppins({
   display: 'swap',
 });
 
-// Misma lista de localidades
+// Assuming these match your backend/database seed for localities
 const LOCALIDADES = [
-  { id: 1, nombre: "Usaquén" }, { id: 2, nombre: "Chapinero" }, { id: 3, nombre: "Santa Fe" },
-  { id: 4, nombre: "San Cristóbal" }, { id: 5, nombre: "Usme" }, { id: 6, nombre: "Tunjuelito" },
-  { id: 7, nombre: "Bosa" }, { id: 8, nombre: "Kennedy" }, { id: 9, nombre: "Fontibón" },
-  { id: 10, nombre: "Engativá" }, { id: 11, nombre: "Suba" }, { id: 12, nombre: "Barrios Unidos" },
-  { id: 13, nombre: "Teusaquillo" }, { id: 14, nombre: "Los Mártires" }, { id: 15, nombre: "Antonio Nariño" },
-  { id: 16, nombre: "Puente Aranda" }, { id: 17, nombre: "La Candelaria" }, { id: 18, nombre: "Rafael Uribe Uribe" },
-  { id: 19, nombre: "Ciudad Bolívar" }, { id: 20, nombre: "Sumapaz" }
+  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito",
+  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos",
+  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", "La Candelaria",
+  "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
 ];
 
 export default function NuevaSolicitudPage() {
@@ -48,13 +33,14 @@ export default function NuevaSolicitudPage() {
   const [descripcion, setDescripcion] = useState('');
   const [localidad, setLocalidad] = useState('');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
+  const [fotoFile, setFotoFile] = useState<File | null>(null); // To store the raw file for upload
   
-  // --- NUEVO ESTADO: SOLICITUD CAI MÓVIL ---
+  // Estado CAI (Priority)
   const [solicitarCai, setSolicitarCai] = useState(false);
   
-  // Estados de Ubicación y UI
-  const [latitud, setLatitud] = useState<string | null>(null);
-  const [longitud, setLongitud] = useState<string | null>(null);
+  // Ubicación
+  const [latitud, setLatitud] = useState<number | null>(null);
+  const [longitud, setLongitud] = useState<number | null>(null);
   const [gpsError, setGpsError] = useState(false);
   
   const [loading, setLoading] = useState(false);
@@ -77,8 +63,9 @@ export default function NuevaSolicitudPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLatitud(position.coords.latitude.toFixed(6));
-        setLongitud(position.coords.longitude.toFixed(6));
+        // Guardamos como números (Float) para Prisma
+        setLatitud(position.coords.latitude);
+        setLongitud(position.coords.longitude);
         setGpsError(false);
         setShowGpsModal(false);
       },
@@ -100,9 +87,17 @@ export default function NuevaSolicitudPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validar tamaño (Max 5MB)
+      if (file.size > 20 * 1024 * 1024) {
+          setMensaje({ text: 'La imagen es demasiado grande (Máx 20MB)', type: 'error' });
+          return;
+      }
+      
+      setFotoFile(file); // Save the file object for upload
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFotoBase64(reader.result as string);
+        setFotoBase64(reader.result as string); // For preview
       };
       reader.readAsDataURL(file);
     }
@@ -114,8 +109,8 @@ export default function NuevaSolicitudPage() {
       return;
     }
     
-    if (!asunto || !descripcion || !localidad || !fotoBase64) {
-      setMensaje({ text: '⚠️ Completa todos los campos y toma una foto.', type: 'error' });
+    if (!asunto || !descripcion || !localidad) {
+      setMensaje({ text: '⚠️ Completa todos los campos obligatorios.', type: 'error' });
       return;
     }
 
@@ -123,49 +118,50 @@ export default function NuevaSolicitudPage() {
     setMensaje({ text: '', type: '' });
 
     try {
-      const token = Cookies.get('token');
-      if (!token) {
-        router.push('/login');
-        return;
+      // 1. Si hay foto, primero la subimos (Endpoint de upload)
+      let uploadedImageUrl = null;
+      
+      if (fotoFile) {
+          const formData = new FormData();
+          // Use the 'folder' field if your backend supports dynamic folders, otherwise it might rely on a default
+          formData.append('file', fotoFile);
+          formData.append('folder', 'app-seguridad'); // Explicitly requesting the folder
+
+          // Subir archivo via your backend proxy to DigitalOcean
+          // Ensure your backend endpoint handles multipart/form-data correctly
+          const uploadRes = await api.post('/media/upload', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          
+          uploadedImageUrl = uploadRes.data.url; // URL que devuelve el backend
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://tu-api.com';
-
-      const body = {
-        asunto,
-        descripcion,
-        localidad: Number(localidad),
-        foto: fotoBase64,
-        latitud,
-        longitud,
-        solicitar_cai: solicitarCai // <--- ENVIAMOS EL DATO
+      // 2. Crear la solicitud con los datos finales
+      const payload = {
+        type: 'SECURITY_APP', // Enum requerido
+        subject: asunto,
+        description: descripcion,
+        priority: solicitarCai ? 'CRITICAL' : 'MEDIUM', // Lógica de negocio
+        
+        // Datos específicos de App Seguridad
+        locality: localidad, // Sending string name as requested
+        lat: latitud,
+        lng: longitud,
+        imageUrl: uploadedImageUrl 
       };
 
-      const response = await fetch(`${apiUrl}/solicitudes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
+      await api.post('/requests', payload);
 
-      if (response.status === 401) {
-        router.push('/login');
-        return;
-      }
-
-      if (!response.ok) throw new Error('Error al enviar solicitud');
-
-      setMensaje({ text: '✅ Solicitud creada correctamente.', type: 'success' });
+      setMensaje({ text: '✅ Reporte enviado exitosamente.', type: 'success' });
       
       setTimeout(() => {
-        router.push('/solicitudes');
+        router.push('/solicitudes'); // Redirigir al listado
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setMensaje({ text: '❌ Error al enviar la solicitud.', type: 'error' });
+      const msg = error.response?.data?.message || 'Error al enviar la solicitud.';
+      setMensaje({ text: `❌ ${Array.isArray(msg) ? msg[0] : msg}`, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -174,12 +170,12 @@ export default function NuevaSolicitudPage() {
   return (
     <div className={`min-h-screen w-full relative bg-[#002244] flex flex-col items-center lg:justify-center overflow-x-hidden ${poppins.className}`}>
       
-      {/* --- FONDO DEGRADADO --- */}
+      {/* --- FONDO --- */}
       <div className="fixed inset-0 bg-gradient-to-br from-[#002244] to-[#0a2e5c] -z-20" />
       <div className="fixed -top-[100px] -right-[100px] w-[500px] h-[500px] rounded-full bg-gradient-to-r from-[#004080] to-transparent opacity-10 blur-3xl -z-10" />
       <div className="fixed bottom-[0px] -left-[100px] w-[600px] h-[600px] rounded-full bg-gradient-to-r from-[#004080] to-transparent opacity-10 blur-3xl -z-10" />
 
-      {/* --- HEADER (Móvil Fixed / PC Inline) --- */}
+      {/* --- HEADER --- */}
       <div className="fixed top-0 w-full lg:static lg:w-auto lg:hidden z-20 flex items-center p-4 bg-[#002244]/90 backdrop-blur-md border-b border-white/5">
         <button onClick={() => router.back()} className="text-white p-2 hover:bg-white/10 rounded-full transition-colors">
           <ArrowLeft size={24} />
@@ -187,12 +183,8 @@ export default function NuevaSolicitudPage() {
         <h1 className="text-white font-bold ml-2 text-lg">Nueva Solicitud</h1>
       </div>
 
-      {/* --- BOTÓN VOLVER (Desktop Flotante) --- */}
       <div className="hidden lg:block absolute top-8 left-8 z-30">
-        <button 
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-white/70 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/5"
-        >
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-white/70 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/5">
           <ArrowLeft size={20} />
           <span className="text-sm font-medium">Cancelar y Volver</span>
         </button>
@@ -201,7 +193,7 @@ export default function NuevaSolicitudPage() {
       {/* --- GRID PRINCIPAL --- */}
       <div className="w-full max-w-7xl mx-auto px-4 py-20 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
 
-        {/* --- COLUMNA IZQUIERDA: INFORMACIÓN (Visible en Desktop) --- */}
+        {/* COLUMNA IZQUIERDA */}
         <div className="hidden lg:flex lg:col-span-5 flex-col text-white animate-fade-in-down pt-8">
           <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-lg mb-6">
             <Image src="/assets/img/bot.png" alt="Logo" width={60} height={60} className="object-contain" />
@@ -213,7 +205,7 @@ export default function NuevaSolicitudPage() {
           </h1>
           
           <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-            Utiliza este formulario para notificar incidencias de seguridad. Recuerda que la ubicación GPS y la evidencia fotográfica son obligatorias para gestionar tu solicitud.
+            Utiliza este formulario para notificar incidencias de seguridad. Recuerda que la ubicación GPS y la evidencia fotográfica son obligatorias.
           </p>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 backdrop-blur-sm">
@@ -229,10 +221,10 @@ export default function NuevaSolicitudPage() {
           </div>
         </div>
 
-        {/* --- COLUMNA DERECHA: FORMULARIO --- */}
+        {/* COLUMNA DERECHA: FORMULARIO */}
         <div className="col-span-1 lg:col-span-7 w-full">
           
-          {/* Header Móvil (Logo) */}
+          {/* Header Móvil */}
           <div className="lg:hidden text-center mb-6 animate-fade-in-down">
             <div className="inline-block p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-3">
               <Image src="/assets/img/bot.png" alt="Logo" width={50} height={50} className="object-contain" />
@@ -241,7 +233,6 @@ export default function NuevaSolicitudPage() {
             <p className="text-[#FFCC00] text-sm mt-1">Completa los datos para generar el reporte</p>
           </div>
 
-          {/* --- TARJETA DEL FORMULARIO --- */}
           <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-2xl animate-fade-in-up">
             
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
@@ -249,17 +240,13 @@ export default function NuevaSolicitudPage() {
               <span className="text-xs font-semibold bg-blue-50 text-blue-600 px-3 py-1 rounded-full">Nuevo</span>
             </div>
 
-            {/* GRID INTERNO FORMULARIO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
               {/* ASUNTO */}
               <div className="md:col-span-1 relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><MessageSquare size={20} /></div>
                 <input 
-                  type="text" 
-                  placeholder="Asunto"
-                  value={asunto}
-                  onChange={(e) => setAsunto(e.target.value)}
+                  type="text" placeholder="Asunto" value={asunto} onChange={(e) => setAsunto(e.target.value)}
                   className="w-full bg-[#f4f7fa] border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 text-[#002244] font-semibold focus:border-[#004080] outline-none transition-all placeholder:text-slate-400"
                 />
               </div>
@@ -269,13 +256,12 @@ export default function NuevaSolicitudPage() {
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><MapIcon size={20} /></div>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ChevronDown size={20} /></div>
                 <select
-                  value={localidad}
-                  onChange={(e) => setLocalidad(e.target.value)}
+                  value={localidad} onChange={(e) => setLocalidad(e.target.value)}
                   className="w-full bg-[#f4f7fa] border border-slate-200 rounded-xl py-3.5 pl-12 pr-10 text-[#002244] font-semibold focus:border-[#004080] outline-none transition-all appearance-none invalid:text-slate-400"
                 >
                   <option value="" disabled>Seleccionar Localidad</option>
-                  {LOCALIDADES.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.nombre}</option>
+                  {LOCALIDADES.map((loc, idx) => (
+                    <option key={idx} value={loc}>{loc}</option>
                   ))}
                 </select>
               </div>
@@ -284,40 +270,24 @@ export default function NuevaSolicitudPage() {
               <div className="md:col-span-2 relative group">
                 <div className="absolute left-4 top-4 text-slate-400"><FileText size={20} /></div>
                 <textarea 
-                  rows={4}
-                  placeholder="Descripción detallada de la novedad..."
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
+                  rows={4} placeholder="Descripción detallada de la novedad..." value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
                   className="w-full bg-[#f4f7fa] border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-[#002244] font-semibold focus:border-[#004080] outline-none transition-all placeholder:text-slate-400 resize-none"
                 />
               </div>
 
-              {/* SEPARADOR */}
               <div className="md:col-span-2 flex items-center text-center text-slate-400 text-xs font-bold uppercase tracking-widest my-2">
                 <div className="flex-1 border-b border-slate-100"></div>
                 <span className="px-4 bg-white z-10">Evidencia y Ubicación</span>
                 <div className="flex-1 border-b border-slate-100"></div>
               </div>
 
-              {/* --- ZONA DE EVIDENCIA --- */}
-              
               {/* CÁMARA */}
               <div className="md:col-span-1 flex flex-col h-full">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment" 
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-
+                <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                 <button 
                   onClick={triggerCamera}
                   className={`flex-1 min-h-[100px] w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 font-bold transition-all relative overflow-hidden group
-                    ${fotoBase64 
-                      ? 'bg-green-50 border-green-300 text-green-700' 
-                      : 'bg-slate-50 border-slate-300 text-slate-500 hover:bg-slate-100 hover:border-slate-400'}`}
+                    ${fotoBase64 ? 'bg-green-50 border-green-300 text-green-700' : 'bg-slate-50 border-slate-300 text-slate-500 hover:bg-slate-100 hover:border-slate-400'}`}
                 >
                   {fotoBase64 ? (
                     <>
@@ -326,18 +296,13 @@ export default function NuevaSolicitudPage() {
                         <CheckCircle size={24} className="text-green-600" />
                         <span className="text-xs mt-1">Foto Cargada</span>
                       </div>
-                      <div 
-                        onClick={(e) => { e.stopPropagation(); setFotoBase64(null); }}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-20 hover:scale-110 transition-transform shadow-sm"
-                      >
+                      <div onClick={(e) => { e.stopPropagation(); setFotoBase64(null); setFotoFile(null); }} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-20 hover:scale-110 transition-transform shadow-sm">
                         <X size={14} />
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="p-3 bg-white rounded-full shadow-sm">
-                        <Camera size={24} />
-                      </div>
+                      <div className="p-3 bg-white rounded-full shadow-sm"><Camera size={24} /></div>
                       <span className="text-sm">Tomar Fotografía</span>
                     </>
                   )}
@@ -346,15 +311,9 @@ export default function NuevaSolicitudPage() {
 
               {/* UBICACIÓN */}
               <div className="md:col-span-1 flex flex-col h-full">
-                <div className={`flex-1 min-h-[100px] w-full p-4 rounded-2xl border flex flex-col justify-center gap-2 transition-all ${
-                  gpsError 
-                    ? 'bg-orange-50 border-orange-200' 
-                    : 'bg-sky-50 border-sky-200'
-                }`}>
+                <div className={`flex-1 min-h-[100px] w-full p-4 rounded-2xl border flex flex-col justify-center gap-2 transition-all ${gpsError ? 'bg-orange-50 border-orange-200' : 'bg-sky-50 border-sky-200'}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${
-                      gpsError ? 'bg-white text-orange-500' : 'bg-white text-sky-600'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${gpsError ? 'bg-white text-orange-500' : 'bg-white text-sky-600'}`}>
                       <MapPin size={20} />
                     </div>
                     <div>
@@ -364,140 +323,80 @@ export default function NuevaSolicitudPage() {
                       </h4>
                     </div>
                   </div>
-
                   <div className="mt-2 bg-white/60 rounded-xl p-2 text-center border border-white/50">
                       {gpsError || !latitud ? (
                       <div className="flex items-center justify-center gap-2">
-                        <span className="text-xs font-bold text-orange-600">
-                          {gpsError ? 'No disponible' : 'Detectando...'}
-                        </span>
-                        <button onClick={obtenerUbicacion} className="text-orange-600 hover:rotate-180 transition-transform duration-500">
-                          <RefreshCw size={14} />
-                        </button>
+                        <span className="text-xs font-bold text-orange-600">{gpsError ? 'No disponible' : 'Detectando...'}</span>
+                        <button onClick={obtenerUbicacion} className="text-orange-600 hover:rotate-180 transition-transform duration-500"><RefreshCw size={14} /></button>
                       </div>
                     ) : (
                       <p className="text-xs font-mono font-bold text-slate-600 tracking-tight">
-                        {latitud}, {longitud}
+                        {latitud.toFixed(6)}, {longitud?.toFixed(6)}
                       </p>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* ======================================================== */}
-              {/* --- NUEVO MÓDULO: SOLICITAR CAI MÓVIL (Toggle Card) --- */}
-              {/* ======================================================== */}
+              {/* MÓDULO CAI */}
               <div className="md:col-span-2 pt-2">
-                <div 
-                  onClick={() => setSolicitarCai(!solicitarCai)}
-                  className={`w-full relative rounded-2xl p-4 cursor-pointer transition-all duration-300 border-2 select-none group
-                    ${solicitarCai 
-                      ? 'bg-[#002244] border-[#002244] shadow-lg shadow-blue-900/20' 
-                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                    }`}
-                >
+                <div onClick={() => setSolicitarCai(!solicitarCai)} className={`w-full relative rounded-2xl p-4 cursor-pointer transition-all duration-300 border-2 select-none group ${solicitarCai ? 'bg-[#002244] border-[#002244] shadow-lg shadow-blue-900/20' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      {/* Icono */}
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors
-                        ${solicitarCai ? 'bg-[#FFCC00] text-[#002244]' : 'bg-white text-slate-400'}`}>
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${solicitarCai ? 'bg-[#FFCC00] text-[#002244]' : 'bg-white text-slate-400'}`}>
                         <Siren size={24} className={solicitarCai ? 'animate-pulse' : ''} />
                       </div>
-                      
-                      {/* Textos */}
                       <div>
-                        <h4 className={`font-bold text-base transition-colors ${solicitarCai ? 'text-white' : 'text-slate-700'}`}>
-                           Solicitar CAI Móvil
-                        </h4>
+                        <h4 className={`font-bold text-base transition-colors ${solicitarCai ? 'text-white' : 'text-slate-700'}`}>Solicitar CAI Móvil</h4>
                         <p className={`text-xs transition-colors ${solicitarCai ? 'text-white/70' : 'text-slate-500'}`}>
-                          {solicitarCai 
-                            ? 'Solicitud de unidad policial activa' 
-                            : '¿Requiere presencia inmediata de una unidad?'}
+                          {solicitarCai ? 'Solicitud de unidad policial activa' : '¿Requiere presencia inmediata de una unidad?'}
                         </p>
                       </div>
                     </div>
-
-                    {/* Switch Visual */}
-                    <div className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 relative
-                      ${solicitarCai ? 'bg-[#FFCC00]' : 'bg-slate-300'}`}>
-                      <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-300
-                        ${solicitarCai ? 'translate-x-6 bg-[#002244]' : 'translate-x-0 bg-white'}`} 
-                      />
+                    <div className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 relative ${solicitarCai ? 'bg-[#FFCC00]' : 'bg-slate-300'}`}>
+                      <div className={`w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${solicitarCai ? 'translate-x-6 bg-[#002244]' : 'translate-x-0 bg-white'}`} />
                     </div>
                   </div>
                 </div>
               </div>
-              {/* ======================================================== */}
 
-
-              {/* BOTÓN ENVIAR (Full Width) */}
+              {/* BOTÓN ENVIAR */}
               <div className="md:col-span-2 pt-4">
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading || gpsError || !latitud}
-                  className="w-full bg-gradient-to-r from-[#FFCC00] to-[#ffdb4d] hover:to-[#ffc000] active:scale-[0.99] text-[#002244] font-extrabold text-lg py-4 rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
+                <button onClick={handleSubmit} disabled={loading || gpsError || !latitud} className="w-full bg-gradient-to-r from-[#FFCC00] to-[#ffdb4d] hover:to-[#ffc000] active:scale-[0.99] text-[#002244] font-extrabold text-lg py-4 rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none">
                   {loading ? 'ENVIANDO...' : 'ENVIAR REPORTE'}
                   {!loading && <Send size={20} />}
                 </button>
-
-                {/* Mensajes */}
                 {mensaje.text && (
-                  <div className={`mt-4 p-3 rounded-xl text-center font-bold text-sm border ${
-                    mensaje.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'
-                  }`}>
+                  <div className={`mt-4 p-3 rounded-xl text-center font-bold text-sm border ${mensaje.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'}`}>
                     {mensaje.text}
                   </div>
                 )}
               </div>
 
             </div>
-
           </div>
         </div>
-
       </div>
 
-      {/* --- FOOTER FIXED --- */}
       <footer className="fixed lg:static bottom-0 w-full py-4 bg-[#002244]/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-center border-t border-white/5 lg:border-none z-20">
         <p className="text-white/50 text-xs">© 2025 Equipo de la Seguridad</p>
       </footer>
 
-      {/* --- MODAL GPS --- */}
       {showGpsModal && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl p-8 max-w-[350px] text-center shadow-2xl animate-fade-in-up">
             <div className="mb-4 flex justify-center">
-              <div className="bg-red-100 p-4 rounded-full">
-                <AlertTriangle size={40} className="text-red-500" />
-              </div>
+              <div className="bg-red-100 p-4 rounded-full"><AlertTriangle size={40} className="text-red-500" /></div>
             </div>
             <h2 className="text-[#002244] text-xl font-bold mb-3">Ubicación Requerida</h2>
             <p className="text-slate-600 text-sm leading-relaxed mb-6">
               Para garantizar la eficiencia y precisión de su reporte, necesitamos registrar la coordenada exacta.
-              <br/><br/>
-              <span className="text-xs text-slate-400 italic block bg-slate-50 p-2 rounded-lg border border-slate-100">
-                Por favor, activa el GPS en tu navegador.
-              </span>
             </p>
-            
-            <button 
-              onClick={obtenerUbicacion}
-              className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl mb-3 shadow-lg shadow-red-500/30 transition-colors"
-            >
-              Reintentar Ubicación
-            </button>
-            
-            <button 
-              onClick={() => setShowGpsModal(false)}
-              className="w-full text-slate-400 font-semibold text-sm hover:text-slate-600 py-2"
-            >
-              Cancelar
-            </button>
+            <button onClick={obtenerUbicacion} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl mb-3 shadow-lg shadow-red-500/30 transition-colors">Reintentar Ubicación</button>
+            <button onClick={() => setShowGpsModal(false)} className="w-full text-slate-400 font-semibold text-sm hover:text-slate-600 py-2">Cancelar</button>
           </div>
         </div>
       )}
-
     </div>
   );
 }

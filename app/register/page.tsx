@@ -9,6 +9,7 @@ import {
   Lock, ShieldCheck, ArrowLeft, ChevronDown, AlertCircle, CheckCircle2 
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
+import api from '../lib/api'; // <--- Importamos tu instancia de axios configurada
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
@@ -16,14 +17,28 @@ const poppins = Poppins({
   display: 'swap',
 });
 
+// LISTA DE LOCALIDADES (Coincide con los IDs del Seed en Backend)
 const LOCALIDADES = [
-  { id: 1, nombre: "Usaquén" }, { id: 2, nombre: "Chapinero" }, { id: 3, nombre: "Santa Fe" },
-  { id: 4, nombre: "San Cristóbal" }, { id: 5, nombre: "Usme" }, { id: 6, nombre: "Tunjuelito" },
-  { id: 7, nombre: "Bosa" }, { id: 8, nombre: "Kennedy" }, { id: 9, nombre: "Fontibón" },
-  { id: 10, nombre: "Engativá" }, { id: 11, nombre: "Suba" }, { id: 12, nombre: "Barrios Unidos" },
-  { id: 13, nombre: "Teusaquillo" }, { id: 14, nombre: "Los Mártires" }, { id: 15, nombre: "Antonio Nariño" },
-  { id: 16, nombre: "Puente Aranda" }, { id: 17, nombre: "La Candelaria" }, { id: 18, nombre: "Rafael Uribe Uribe" },
-  { id: 19, nombre: "Ciudad Bolívar" }, { id: 20, nombre: "Sumapaz" }
+  { id: 1, name: "Usaquén" },
+  { id: 2, name: "Chapinero" },
+  { id: 3, name: "Santa Fe" },
+  { id: 4, name: "San Cristóbal" },
+  { id: 5, name: "Usme" },
+  { id: 6, name: "Tunjuelito" },
+  { id: 7, name: "Bosa" },
+  { id: 8, name: "Kennedy" },
+  { id: 9, name: "Fontibón" },
+  { id: 10, name: "Engativá" },
+  { id: 11, name: "Suba" },
+  { id: 12, name: "Barrios Unidos" },
+  { id: 13, name: "Teusaquillo" },
+  { id: 14, name: "Los Mártires" },
+  { id: 15, name: "Antonio Nariño" },
+  { id: 16, name: "Puente Aranda" },
+  { id: 17, name: "La Candelaria" },
+  { id: 18, name: "Rafael Uribe Uribe" },
+  { id: 19, name: "Ciudad Bolívar" },
+  { id: 20, name: "Sumapaz" }
 ];
 
 export default function RegisterPage() {
@@ -32,7 +47,13 @@ export default function RegisterPage() {
   const [message, setMessage] = useState({ text: '', type: '' });
 
   const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', documentNumber: '', locality: '', password: '', confirmPassword: ''
+    fullName: '', 
+    email: '', 
+    phone: '', 
+    documentNumber: '', 
+    locality: '', // Esto guardará el ID como string temporalmente
+    password: '', 
+    confirmPassword: ''
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -44,36 +65,40 @@ export default function RegisterPage() {
     e.preventDefault();
     setMessage({ text: '', type: '' });
 
+    // Validaciones básicas front
     if (formData.password !== formData.confirmPassword) {
       setMessage({ text: 'Las contraseñas no coinciden', type: 'error' });
+      return;
+    }
+
+    if (!formData.locality) {
+      setMessage({ text: 'Debes seleccionar una localidad', type: 'error' });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_AUTH_URL || 'http://tu-api.com';
-      const response = await fetch(`${apiUrl}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          documentNumber: formData.documentNumber,
-          locality: Number(formData.locality),
-          password: formData.password
-        }),
+      // Enviamos al backend
+      // IMPORTANTE: Convertimos locality a número (localityId)
+      await api.post('/auth/register', {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        documentNumber: formData.documentNumber,
+        localityId: Number(formData.locality), // <--- CAMBIO CLAVE
+        password: formData.password
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Error al registrar');
-
-      setMessage({ text: 'Registro exitoso. Redirigiendo...', type: 'success' });
-      setTimeout(() => router.push('/login'), 1500);
+      setMessage({ text: '¡Cuenta creada exitosamente! Redirigiendo...', type: 'success' });
+      
+      setTimeout(() => router.push('/login'), 2000);
 
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ocurrió un error inesperado', type: 'error' });
+      // Manejo de errores del backend
+      const msg = error.response?.data?.message || 'Error al registrar usuario';
+      // Si el backend devuelve array de errores (class-validator), mostramos el primero
+      setMessage({ text: Array.isArray(msg) ? msg[0] : msg, type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +112,7 @@ export default function RegisterPage() {
       <div className="fixed -top-[100px] -right-[100px] w-[500px] h-[500px] rounded-full bg-gradient-to-r from-[#004080] to-transparent opacity-20 blur-3xl -z-10 pointer-events-none" />
       <div className="fixed bottom-[0px] -left-[100px] w-[600px] h-[600px] rounded-full bg-gradient-to-t from-[#004080] to-transparent opacity-15 blur-3xl -z-10 pointer-events-none" />
 
-      {/* --- BOTÓN ATRÁS FLOTANTE --- */}
+      {/* --- BOTÓN ATRÁS --- */}
       <div className="absolute top-6 left-6 z-30">
         <button 
           onClick={() => router.push('/login')}
@@ -98,12 +123,9 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      {/* --- CONTENEDOR GRID PRINCIPAL --- 
-         CAMBIO: Se usó 'xl:grid-cols-12' en vez de 'lg' para que en tablets siga siendo 1 columna 
-      */}
       <div className="container max-w-7xl mx-auto px-4 py-8 md:py-12 grid grid-cols-1 xl:grid-cols-12 gap-10 items-center min-h-screen">
 
-        {/* --- COLUMNA IZQUIERDA: BRANDING (Visible solo en XL/Desktop grande) --- */}
+        {/* --- COLUMNA IZQUIERDA: BRANDING --- */}
         <div className="hidden xl:flex xl:col-span-5 flex-col text-white animate-fade-in-down pl-8">
           <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/10 shadow-xl mb-8">
             <Image src="/assets/img/bot.png" alt="Logo" width={70} height={70} className="object-contain" />
@@ -131,12 +153,11 @@ export default function RegisterPage() {
         </div>
 
         {/* --- COLUMNA DERECHA: FORMULARIO --- */}
-        {/* CAMBIO: xl:col-span-7 para que coincida con el grid principal */}
         <div className="col-span-1 xl:col-span-7 w-full flex justify-center xl:justify-end">
           
           <div className="w-full max-w-[600px] bg-white/95 backdrop-blur-xl p-6 md:p-10 rounded-[2rem] shadow-2xl relative">
             
-            {/* Header Móvil (Visible en < XL) */}
+            {/* Header Móvil */}
             <div className="xl:hidden text-center mb-8">
               <div className="inline-block p-3 rounded-full bg-slate-100 mb-3 shadow-inner">
                 <Image src="/assets/img/bot.png" alt="Logo" width={50} height={50} className="object-contain" />
@@ -150,22 +171,18 @@ export default function RegisterPage() {
 
             <form onSubmit={handleRegister} className="flex flex-col gap-4">
               
-              {/* --- GRID DE INPUTS ---
-                 CAMBIO: 'md:grid-cols-2' a 'lg:grid-cols-2'. 
-                 Esto evita que en tablets o celulares grandes se divida en dos y quede angosto.
-              */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 
-                {/* Nombre - Full Width en LG */}
+                {/* Nombre */}
                 <div className="lg:col-span-2 relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><User size={20} /></div>
                   <input
-                    type="text" name="name" placeholder="Nombre Completo" value={formData.name} onChange={handleChange} required
+                    type="text" name="fullName" placeholder="Nombre Completo" value={formData.fullName} onChange={handleChange} required
                     className="w-full bg-[#f4f7fa] border border-slate-200 text-[#002244] font-semibold rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-[#004080] focus:ring-2 focus:ring-[#004080]/10 transition-all placeholder:text-slate-400"
                   />
                 </div>
 
-                {/* Email - Full Width en LG */}
+                {/* Email */}
                 <div className="lg:col-span-2 relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Mail size={20} /></div>
                   <input
@@ -192,7 +209,7 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                {/* Localidad - Full Width */}
+                {/* Localidad (Con ID) */}
                 <div className="lg:col-span-2 relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><MapPin size={20} /></div>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ChevronDown size={20} /></div>
@@ -202,16 +219,9 @@ export default function RegisterPage() {
                   >
                     <option value="" disabled>Seleccionar Localidad</option>
                     {LOCALIDADES.map((loc) => (
-                      <option key={loc.id} value={loc.id}>{loc.nombre}</option>
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
                     ))}
                   </select>
-                </div>
-
-                {/* Divider Seguridad */}
-                <div className="lg:col-span-2 pt-2">
-                  <h3 className="text-[#004080] text-xs font-bold uppercase tracking-wider border-b border-slate-200 pb-2 mb-2">
-                    Seguridad de la Cuenta
-                  </h3>
                 </div>
 
                 {/* Password */}
@@ -233,15 +243,10 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Terms y Botones (Sin cambios) */}
-              <div className="text-center md:text-left text-xs text-slate-500 mt-2 px-1">
-                Al registrarte aceptas nuestra{' '}
-                <a href="#" className="text-[#004080] font-bold hover:underline">Política de Privacidad</a>.
-              </div>
-
+              {/* Botón y Mensajes */}
               <button
                 type="submit" disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#FFCC00] to-[#ffdb4d] hover:to-[#ffc000] active:scale-[0.99] text-[#002244] font-extrabold text-base py-4 rounded-xl shadow-lg shadow-orange-500/20 mt-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-[#FFCC00] to-[#ffdb4d] hover:to-[#ffc000] active:scale-[0.99] text-[#002244] font-extrabold text-base py-4 rounded-xl shadow-lg shadow-orange-500/20 mt-4 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'REGISTRANDO...' : 'CREAR CUENTA'}
               </button>
@@ -265,9 +270,10 @@ export default function RegisterPage() {
             </form>
           </div>
         </div>
-          <div className="xl:hidden mt-8 text-white/40 text-xs text-center">
+        
+        <div className="xl:hidden mt-8 text-white/40 text-xs text-center">
             © 2025 Equipo de la Seguridad
-          </div>
+        </div>
       </div>
     </div>
   );

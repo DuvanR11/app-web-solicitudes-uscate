@@ -3,17 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Cookies from 'js-cookie';
 import { 
   PlusCircle, 
   MapPin, 
   ArrowRight, 
   FolderOpen, 
   Loader2,
-  Filter,
-  ClipboardCheck // <--- NUEVO IMPORT
+  Clock, CheckCircle2, AlertCircle, PlayCircle
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
+import api from '../lib/api'; // <--- Usamos tu instancia de axios configurada
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700'],
@@ -21,19 +20,20 @@ const poppins = Poppins({
   display: 'swap',
 });
 
-// Definición de tipos
+// Definición de tipos ajustada al Backend NestJS
 interface Solicitud {
-  id: number | string;
-  asunto: string;
-  descripcion: string;
-  estado: 'Aprobada' | 'Rechazada' | 'Pendiente';
-  fotoUrl?: string;
+  id: number;
+  subject: string;      // Antes 'asunto'
+  description: string;  // Antes 'descripcion'
+  status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  imageUrl?: string;    // Antes 'fotoUrl'
+  publicCode: string;
+  createdAt: string;
 }
 
 export default function SolicitudesPage() {
   const router = useRouter();
   
-  // Estados
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -42,57 +42,54 @@ export default function SolicitudesPage() {
     const cargarSolicitudes = async () => {
       setCargando(true);
       try {
-        const token = Cookies.get('token');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://tu-api.com';
+        // api.get inyecta el token automáticamente gracias al interceptor
+        // El backend detecta el rol CITIZEN y filtra solo las suyas
+        const response = await api.get('/requests');
         
-        // Simulación o llamada real
-        const response = await fetch(`${apiUrl}/solicitudes`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        // NestJS devuelve { data: [], meta: {} }
+        setSolicitudes(response.data.data);
 
-        if (response.status === 401) {
-          Cookies.remove('token');
-          router.push('/login');
-          return;
-        }
-
-        if (!response.ok) throw new Error('Error al cargar');
-
-        const data = await response.json();
-        setSolicitudes(data);
-
-      } catch (error) {
+      } catch (error: any) {
         console.error("❌ Error cargando solicitudes:", error);
+        // Si el interceptor detecta 401, ya redirige al login, 
+        // pero por seguridad extra podemos manejarlo aquí si queremos mostrar un toast
       } finally {
         setCargando(false);
       }
     };
 
     cargarSolicitudes();
-  }, [router]);
+  }, []);
 
-  // --- HELPERS ---
-  const getImageUrl = (url?: string) => {
-    if (!url) return '/assets/img/no-image.png'; 
-    if (url.startsWith('http')) return url;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''; 
-    return `${apiUrl.replace('/api', '')}/uploads/${url}`; 
-  };
-
-  const getStatusBadgeStyles = (estado: string) => {
-    switch (estado) {
-      case 'Aprobada': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Rechazada': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Pendiente': return 'bg-amber-100 text-amber-800 border-amber-200';
-      default: return 'bg-slate-100 text-slate-800';
+  // --- HELPERS VISUALES ---
+  
+  // Mapeo de estados a estilos visuales
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'RESOLVED': 
+        return { 
+            style: 'bg-emerald-100 text-emerald-800 border-emerald-200', 
+            label: 'Resuelto',
+            icon: CheckCircle2
+        };
+      case 'CLOSED': 
+        return { 
+            style: 'bg-slate-100 text-slate-800 border-slate-200', 
+            label: 'Cerrado',
+            icon: AlertCircle
+        };
+      case 'IN_PROGRESS': 
+        return { 
+            style: 'bg-blue-100 text-blue-800 border-blue-200', 
+            label: 'En Gestión',
+            icon: PlayCircle
+        };
+      default: // PENDING 
+        return { 
+            style: 'bg-amber-100 text-amber-800 border-amber-200', 
+            label: 'Pendiente',
+            icon: Clock
+        };
     }
   };
 
@@ -113,7 +110,7 @@ export default function SolicitudesPage() {
              </div>
              <div>
                <h1 className="text-white font-bold text-lg md:text-xl tracking-wide leading-none">Mis Solicitudes</h1>
-               <p className="text-[#FFCC00] text-xs font-medium hidden md:block mt-1">Gestión de reportes</p>
+               <p className="text-[#FFCC00] text-xs font-medium hidden md:block mt-1">Panel Ciudadano</p>
              </div>
           </div>
           
@@ -123,8 +120,8 @@ export default function SolicitudesPage() {
               className="flex items-center gap-2 bg-[#FFCC00] hover:bg-[#e6b800] text-[#002244] px-5 py-2.5 rounded-full font-bold text-sm transition-transform active:scale-95 shadow-lg shadow-orange-500/20"
             >
               <PlusCircle size={18} />
-              <span className="hidden sm:inline">Nueva Solicitud</span>
-              <span className="sm:hidden">Nueva</span>
+              <span className="hidden sm:inline">Nuevo Reporte</span>
+              <span className="sm:hidden">Nuevo</span>
             </button>
           </div>
         </div>
@@ -140,62 +137,83 @@ export default function SolicitudesPage() {
           </div>
           <h2 className="text-white font-bold text-2xl leading-tight">Historial de <br/> Reportes</h2>
         </div>
+
         {/* --- ESTADO: CARGANDO --- */}
         {cargando && (
-          <div className="flex flex-col items-center justify-center mt-10 text-white/70 gap-3">
+          <div className="flex flex-col items-center justify-center mt-20 text-white/70 gap-3">
             <Loader2 className="animate-spin" size={48} color="#FFCC00" />
-            <p className="text-sm font-medium animate-pulse">Cargando información...</p>
+            <p className="text-sm font-medium animate-pulse">Cargando tus solicitudes...</p>
           </div>
         )}
 
         {/* --- ESTADO: LISTA DE DATOS (GRID) --- */}
         {!cargando && solicitudes.length > 0 && (
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            {solicitudes.map((solicitud) => (
-              <div 
-                key={solicitud.id}
-                onClick={() => router.push(`/solicitudes/${solicitud.id}`)}
-                className="group bg-white rounded-[24px] overflow-hidden shadow-lg border border-white/5 cursor-pointer hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col h-full"
-              >
-                
-                {/* Imagen Header de la Card */}
-                <div className="h-[200px] w-full overflow-hidden relative">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: `url(${getImageUrl(solicitud.fotoUrl)})` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+            {solicitudes.map((solicitud) => {
+              const statusInfo = getStatusConfig(solicitud.status);
+              const StatusIcon = statusInfo.icon;
+
+              return (
+                <div 
+                  key={solicitud.id}
+                  onClick={() => router.push(`/solicitudes/${solicitud.id}`)} // Ajusta esta ruta a tu página de detalle real
+                  className="group bg-white rounded-[24px] overflow-hidden shadow-lg border border-white/5 cursor-pointer hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col h-full"
+                >
                   
-                  <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md border backdrop-blur-md ${getStatusBadgeStyles(solicitud.estado)}`}>
-                    {solicitud.estado}
+                  {/* Imagen Header de la Card */}
+                  <div className="h-[180px] w-full overflow-hidden relative bg-slate-200">
+                    {solicitud.imageUrl ? (
+                        <Image 
+                            src={solicitud.imageUrl} 
+                            alt={solicitud.subject}
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                            <FolderOpen size={40} />
+                        </div>
+                    )}
+                    
+                    {/* Overlay degradado para legibilidad */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    
+                    {/* Badge de Estado */}
+                    <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md border backdrop-blur-md flex items-center gap-1.5 ${statusInfo.style}`}>
+                      <StatusIcon size={12} />
+                      {statusInfo.label}
+                    </div>
                   </div>
-                </div>
 
-                {/* Body de la Card */}
-                <div className="p-6 flex flex-col flex-1">
-                  <div className="flex justify-between items-start mb-3 gap-2">
-                    <h3 className="text-[#002244] font-bold text-xl leading-tight line-clamp-1 group-hover:text-blue-700 transition-colors">
-                      {solicitud.asunto}
+                  {/* Body de la Card */}
+                  <div className="p-6 flex flex-col flex-1">
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                            {solicitud.publicCode || `#${solicitud.id}`}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                            {new Date(solicitud.createdAt).toLocaleDateString()}
+                        </span>
+                    </div>
+
+                    <h3 className="text-[#002244] font-bold text-lg leading-tight line-clamp-2 mb-3 group-hover:text-blue-700 transition-colors">
+                      {solicitud.subject}
                     </h3>
+
+                    {/* Descripción truncada */}
+                    <p className="text-[#718096] text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
+                      {solicitud.description}
+                    </p>
+
+                    <button className="w-full bg-[#002244] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 group-hover:bg-[#FFCC00] group-hover:text-[#002244] transition-all shadow-md mt-auto">
+                      Ver Seguimiento
+                      <ArrowRight size={18} />
+                    </button>
                   </div>
 
-                  <div className="inline-flex items-center gap-1.5 bg-[#f0f4f8] px-3 py-1.5 rounded-lg text-xs font-bold text-[#004080] w-fit mb-4">
-                      <MapPin size={14} />
-                      <span>Ubicación registrada</span>
-                  </div>
-
-                  <p className="text-[#718096] text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
-                    {solicitud.descripcion}
-                  </p>
-
-                  <button className="w-full bg-[#002244] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 group-hover:bg-[#FFCC00] group-hover:text-[#002244] transition-all shadow-md">
-                    Ver Detalle
-                    <ArrowRight size={18} />
-                  </button>
                 </div>
-
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
