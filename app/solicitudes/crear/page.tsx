@@ -136,7 +136,7 @@ export default function NuevaSolicitudPage() {
         priority: solicitarCai ? 'CRITICAL' : 'MEDIUM', 
         
         // Convertimos el string "1" a número 1 para el backend
-        locality: Number(localidad), 
+        localityId: Number(localidad), 
         lat: latitud,
         lng: longitud,
         imageUrl: uploadedImageUrl 
