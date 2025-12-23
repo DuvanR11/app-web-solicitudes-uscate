@@ -47,7 +47,7 @@ export default function LoginPage() {
       // Opcional: Cookies.set('user-role', user.role, { expires: 7 });
 
       // 3. Redireccionar según el rol (Opcional, por ahora todos al dashboard)
-      if (user.role === 'CITIZEN') {
+      if (user.role.code === 'CITIZEN') {
           router.push('/'); 
       } else {
         const msg = 'No cuenta con los permisos para crear reportes';
