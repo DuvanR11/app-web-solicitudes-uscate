@@ -8,7 +8,7 @@ import {
   CheckCircle, X, MapPin, RefreshCw, Send, AlertTriangle, ChevronDown, Info, Siren 
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
-import api from '@/app/lib/api'; // <--- Importamos api configurada
+import api from '@/app/lib/api'; 
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
@@ -16,7 +16,7 @@ const poppins = Poppins({
   display: 'swap',
 });
 
-// Assuming these match your backend/database seed for localities
+// IDs esperados: Usaquén (1), Chapinero (2), etc.
 const LOCALIDADES = [
   "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito",
   "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos",
@@ -31,9 +31,9 @@ export default function NuevaSolicitudPage() {
   // Estados del Formulario
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [localidad, setLocalidad] = useState('');
+  const [localidad, setLocalidad] = useState(''); // Ahora guardará el ID como string ("1", "2")
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
-  const [fotoFile, setFotoFile] = useState<File | null>(null); // To store the raw file for upload
+  const [fotoFile, setFotoFile] = useState<File | null>(null); 
   
   // Estado CAI (Priority)
   const [solicitarCai, setSolicitarCai] = useState(false);
@@ -63,7 +63,6 @@ export default function NuevaSolicitudPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Guardamos como números (Float) para Prisma
         setLatitud(position.coords.latitude);
         setLongitud(position.coords.longitude);
         setGpsError(false);
@@ -87,17 +86,14 @@ export default function NuevaSolicitudPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validar tamaño (Max 5MB)
       if (file.size > 20 * 1024 * 1024) {
           setMensaje({ text: 'La imagen es demasiado grande (Máx 20MB)', type: 'error' });
           return;
       }
-      
-      setFotoFile(file); // Save the file object for upload
-
+      setFotoFile(file); 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFotoBase64(reader.result as string); // For preview
+        setFotoBase64(reader.result as string); 
       };
       reader.readAsDataURL(file);
     }
@@ -118,33 +114,29 @@ export default function NuevaSolicitudPage() {
     setMensaje({ text: '', type: '' });
 
     try {
-      // 1. Si hay foto, primero la subimos (Endpoint de upload)
       let uploadedImageUrl = null;
       
       if (fotoFile) {
           const formData = new FormData();
-          // Use the 'folder' field if your backend supports dynamic folders, otherwise it might rely on a default
           formData.append('file', fotoFile);
-          formData.append('folder', 'app-seguridad'); // Explicitly requesting the folder
+          formData.append('folder', 'app-seguridad');
 
-          // Subir archivo via your backend proxy to DigitalOcean
-          // Ensure your backend endpoint handles multipart/form-data correctly
           const uploadRes = await api.post('/media/upload', formData, {
               headers: { 'Content-Type': 'multipart/form-data' }
           });
           
-          uploadedImageUrl = uploadRes.data.url; // URL que devuelve el backend
+          uploadedImageUrl = uploadRes.data.url; 
       }
 
-      // 2. Crear la solicitud con los datos finales
+      // --- CAMBIO AQUÍ: Enviamos el ID numérico ---
       const payload = {
-        type: 'SECURITY_APP', // Enum requerido
+        type: 'SECURITY_APP', 
         subject: asunto,
         description: descripcion,
-        priority: solicitarCai ? 'CRITICAL' : 'MEDIUM', // Lógica de negocio
+        priority: solicitarCai ? 'CRITICAL' : 'MEDIUM', 
         
-        // Datos específicos de App Seguridad
-        locality: localidad, // Sending string name as requested
+        // Convertimos el string "1" a número 1 para el backend
+        locality: Number(localidad), 
         lat: latitud,
         lng: longitud,
         imageUrl: uploadedImageUrl 
@@ -155,7 +147,7 @@ export default function NuevaSolicitudPage() {
       setMensaje({ text: '✅ Reporte enviado exitosamente.', type: 'success' });
       
       setTimeout(() => {
-        router.push('/solicitudes'); // Redirigir al listado
+        router.push('/solicitudes'); 
       }, 1500);
 
     } catch (error: any) {
@@ -251,7 +243,7 @@ export default function NuevaSolicitudPage() {
                 />
               </div>
 
-              {/* LOCALIDAD */}
+              {/* LOCALIDAD - CAMBIO AQUÍ */}
               <div className="md:col-span-1 relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><MapIcon size={20} /></div>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><ChevronDown size={20} /></div>
@@ -261,7 +253,8 @@ export default function NuevaSolicitudPage() {
                 >
                   <option value="" disabled>Seleccionar Localidad</option>
                   {LOCALIDADES.map((loc, idx) => (
-                    <option key={idx} value={loc}>{loc}</option>
+                    // value={idx + 1} para enviar el ID (1, 2, 3...) en lugar del texto
+                    <option key={idx} value={idx + 1}>{loc}</option>
                   ))}
                 </select>
               </div>
