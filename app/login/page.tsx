@@ -132,7 +132,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   type="email"
-                  placeholder="Correo Institucional"
+                  placeholder="Correo"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
