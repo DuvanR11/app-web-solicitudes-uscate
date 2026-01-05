@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 import api from '@/app/lib/api'; 
+import imageCompression from 'browser-image-compression';
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
@@ -83,21 +84,50 @@ export default function NuevaSolicitudPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 20 * 1024 * 1024) {
-          setMensaje({ text: 'La imagen es demasiado grande (Máx 20MB)', type: 'error' });
-          return;
-      }
-      setFotoFile(file); 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  
+  if (file) {
+    // Validar tipo de archivo antes de procesar
+    if (!file.type.match(/image\/*/)) {
+      setMensaje({ text: 'Solo se permiten imágenes', type: 'error' });
+      return;
+    }
+
+    setLoading(true); // Bloqueamos botón mientras comprime
+    setMensaje({ text: 'Procesando imagen (optimizando)...', type: 'info' });
+
+    try {
+      // OPCIONES MÁGICAS: Esto soluciona el problema del iPhone
+      const options = {
+        maxSizeMB: 1,           // Forzamos a que pese menos de 1MB
+        maxWidthOrHeight: 1920, // Resolución Full HD (suficiente para seguridad)
+        useWebWorker: true,     // Usa hilos secundarios para no congelar el celular
+        fileType: 'image/jpeg'  // <--- ESTO ES CLAVE: Convierte HEIC a JPEG
+      };
+
+      // Comprimimos
+      const compressedFile = await imageCompression(file, options);
+      
+      // Reemplazamos el archivo original gigante por el ligero y compatible
+      setFotoFile(compressedFile); 
+
+      // Generamos preview
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFotoBase64(reader.result as string); 
+        setFotoBase64(reader.result as string);
+        setMensaje({ text: '', type: '' });
+        setLoading(false); // Desbloqueamos
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(compressedFile);
+
+    } catch (error) {
+      console.error('Error comprimiendo:', error);
+      setMensaje({ text: 'Error al procesar la imagen del dispositivo', type: 'error' });
+      setLoading(false);
     }
-  };
+  }
+};
 
   const handleSubmit = async () => {
     if (gpsError || !latitud || !longitud) {
